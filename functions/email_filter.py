@@ -8,10 +8,13 @@ s3 = boto3.client("s3")
 def lambda_handler(event, _):
     """Ensure that we only save emails from white-listed senders."""
 
-    # Extract the sender's email from the SES message
+    # Extract the sender's email from the SNS message
+
     record = event["Records"][0]
-    message = record["ses"]["mail"]
-    sender = message["source"]
+    message_json_str = record["Sns"]["Message"]
+    message = json.loads(message_json_str)
+    mail = message["mail"]
+    sender = mail["source"]
 
     # Check if the sender is whitelisted
     if sender.lower() in [
@@ -20,8 +23,8 @@ def lambda_handler(event, _):
         # Store email in S3
         s3.put_object(
             Bucket=os.environ["S3_BUCKET"],
-            Key=f"emails/{message['messageId']}.json",
-            Body=json.dumps(record),
+            Key=f"emails/{mail['messageId']}.json",
+            Body=json.dumps(message),
         )
         return {"statusCode": 200, "body": f"Email from {sender} stored."}
     else:

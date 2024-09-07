@@ -29,6 +29,12 @@ Resources:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
+  # SNS Topic for incoming emails
+  EmailSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: email-sns-topic
+
   # Lambda function to filter emails based on sender whitelist
   EmailFilterLambda:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
@@ -44,6 +50,11 @@ Resources:
             Effect: Allow
             Action: s3:PutObject
             Resource: !Sub "arn:aws:s3:::${RawDataS3Bucket}/*"
+      Events:
+        SNSSubscription:
+          Type: SNS
+          Properties:
+            Topic: !Ref EmailSNSTopic
 
   # IAM Role for the Lambda function
   LambdaExecutionRole:
@@ -71,3 +82,18 @@ Resources:
     Properties:
       RuleSetName: EmailRuleSet
 
+  # SES Receipt Rule to publish email to SNS
+  SESReceiptRule:
+    Type: AWS::SES::ReceiptRule
+    Properties:
+      RuleSetName: !Ref SESReceiptRuleSet
+      Rule:
+        Name: EmailToSNSRule
+        Enabled: true
+        Recipients:
+          - speakyer.com
+        Actions:
+          - SNSAction:
+              TopicArn: !Ref EmailSNSTopic
+        ScanEnabled: true
+        TlsPolicy: Optional
