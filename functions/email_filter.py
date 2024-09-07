@@ -9,7 +9,8 @@ def lambda_handler(event, _):
     """Ensure that we only save emails from white-listed senders."""
 
     # Extract the sender's email from the SES message
-    message = event["Records"][0]["ses"]["mail"]
+    record = event["Records"][0]
+    message = record["ses"]["mail"]
     sender = message["source"]
 
     # Check if the sender is whitelisted
@@ -20,9 +21,9 @@ def lambda_handler(event, _):
         s3.put_object(
             Bucket=os.environ["S3_BUCKET"],
             Key=f"emails/{message['messageId']}.json",
-            Body=json.dumps(message),
+            Body=json.dumps(record),
         )
-        return {"statusCode": 200, "body": f"Email from {sender} accepted and stored."}
+        return {"statusCode": 200, "body": f"Email from {sender} stored."}
     else:
         # Reject the email
         return {"statusCode": 403, "body": f"Email from {sender} rejected."}

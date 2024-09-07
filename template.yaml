@@ -39,6 +39,11 @@ Resources:
         Variables:
           WHITELIST: "jamie@jamieforrest.com"
           S3_BUCKET: !Ref RawDataS3Bucket
+      Policies:
+        - Statement:
+            Effect: Allow
+            Action: s3:PutObject
+            Resource: !Sub "arn:aws:s3:::${RawDataS3Bucket}/*"
 
   # IAM Role for the Lambda function
   LambdaExecutionRole:
