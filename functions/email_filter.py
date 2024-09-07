@@ -1,8 +1,17 @@
 import boto3  # type: ignore
 import json
 import os
+from models import EmailInfo
+from responses import error_response, forbidden_response, success_response
 
 s3 = boto3.client("s3")
+
+
+def validate_sender(sender: str) -> bool:
+    """Check if the sender is whitelisted."""
+    return sender.lower() in [
+        email.lower() for email in os.environ["WHITELIST"].split(",")
+    ]
 
 
 def lambda_handler(event, _):
@@ -10,23 +19,24 @@ def lambda_handler(event, _):
 
     # Extract the sender's email from the SNS message
 
-    record = event["Records"][0]
-    message_json_str = record["Sns"]["Message"]
-    message = json.loads(message_json_str)
-    mail = message["mail"]
-    sender = mail["source"]
+    email_info = EmailInfo.from_event(event)
+    sender = email_info.sender
 
     # Check if the sender is whitelisted
-    if sender.lower() in [
-        email.lower() for email in os.environ["WHITELIST"].split(",")
-    ]:
+    if validate_sender(sender):
         # Store email in S3
-        s3.put_object(
-            Bucket=os.environ["S3_BUCKET"],
-            Key=f"emails/{mail['messageId']}.json",
-            Body=json.dumps(message),
-        )
-        return {"statusCode": 200, "body": f"Email from {sender} stored."}
+        try:
+            bucket = os.environ["S3_BUCKET"]
+            key = f"emails/{email_info.message_id}.json"
+            s3.put_object(
+                Bucket=bucket,
+                Key=key,
+                Body=json.dumps(email_info.message),
+            )
+            return success_response(f"Email from {sender} stored.")
+        except Exception as e:
+            # TODO alert sender of error
+            return error_response(f"Error saving email from {sender}: {e}")
     else:
         # Reject the email
-        return {"statusCode": 403, "body": f"Email from {sender} rejected."}
+        return forbidden_response(f"Email from {sender} rejected.")
