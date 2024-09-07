@@ -45,6 +45,7 @@ Resources:
         Variables:
           WHITELIST: "jamie@jamieforrest.com"
           S3_BUCKET: !Ref RawDataS3Bucket
+          NEXT_LAMBDA: !GetAtt RawDataToAudioLambda.Arn
       Policies:
         - Statement:
             Effect: Allow
@@ -56,26 +57,27 @@ Resources:
           Properties:
             Topic: !Ref EmailSNSTopic
 
-  # IAM Role for the Lambda function
-  LambdaExecutionRole:
-    Type: AWS::IAM::Role
+  # Lambda function to process data asynchronously
+  RawDataToAudioLambda:
+    Type: AWS::Serverless::Function
     Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
+      CodeUri: functions/
+      Handler: raw_data_to_audio.lambda_handler
       Policies:
-        - PolicyName: LambdaS3WritePolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:PutObject
-                Resource: !Sub 'arn:aws:s3:::${RawDataS3Bucket}/*'
+        - Statement:
+            Effect: Allow
+            Action: s3:GetObject
+            Resource: !Sub "arn:aws:s3:::${RawDataS3Bucket}/*"
+
+  # Permission for EmailFilterLambda to invoke RawDataToAudioLambda
+  EmailFilterToRawDataAudioLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt RawDataToAudioLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: lambda.amazonaws.com
+      SourceArn: !GetAtt EmailFilterLambda.Arn
+
   # SES Rule Set
   SESReceiptRuleSet:
     Type: AWS::SES::ReceiptRuleSet
@@ -97,3 +99,5 @@ Resources:
               TopicArn: !Ref EmailSNSTopic
         ScanEnabled: true
         TlsPolicy: Optional
+
+  #
