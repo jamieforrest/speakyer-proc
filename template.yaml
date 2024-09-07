@@ -18,10 +18,51 @@ Globals:
     LoggingConfig:
       LogFormat: JSON
 Resources:
+    # S3 Bucket to store raw incoming data
+  RawDataS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-raw-data'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # Lambda function to filter emails based on sender whitelist
+  EmailFilterLambda:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: functions/
+      Handler: email_filter.lambda_handler
+      Environment:
+        Variables:
+          WHITELIST: "jamie@jamieforrest.com"
+          S3_BUCKET: !Ref RawDataS3Bucket
+
+  # IAM Role for the Lambda function
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaS3WritePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub 'arn:aws:s3:::${RawDataS3Bucket}/*'
   # SES Rule Set
   SESReceiptRuleSet:
     Type: AWS::SES::ReceiptRuleSet
     Properties:
       RuleSetName: EmailRuleSet
-
 
