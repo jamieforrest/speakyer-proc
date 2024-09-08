@@ -3,7 +3,7 @@ import logging
 import os
 import tempfile
 
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError  # type: ignore
 from openai import OpenAI
 from responses import success_response, error_response
 from typing import Literal
@@ -109,6 +109,8 @@ def lambda_handler(event, _):
     key = event["key"]
     raw_data = get_file_content_from_s3(bucket, key)
 
+    # Extract text from the raw data and store it in S3
+    # If the text file already exists, retrieve the text from S3
     output_bucket = os.environ["OUTPUT_S3_BUCKET"]
     text_key = new_key_for_processed_file(key, "texts", "txt")
 
@@ -123,6 +125,8 @@ def lambda_handler(event, _):
     elif not extracted_text:
         return error_response(f"Failed to extract text from {key}")
 
+    # Convert the extracted text to audio and store it in S3
+    # If the audio file already exists, don't do anything
     audio_key = new_key_for_processed_file(key, "audios", "mp3")
     audio_file_exists = file_exists(output_bucket, audio_key)
     if not audio_file_exists:
