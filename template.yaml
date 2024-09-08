@@ -39,6 +39,14 @@ Resources:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
+  PydubLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: pydub
+      ContentUri: pydub_layer/
+      CompatibleRuntimes:
+        - python3.10
+
   # SNS Topic for incoming emails
   EmailSNSTopic:
     Type: AWS::SNS::Topic
@@ -78,11 +86,14 @@ Resources:
     Properties:
       CodeUri: functions/
       Handler: raw_data_to_audio.lambda_handler
-      Timeout: 60
+      Timeout: 300
+      MemorySize: 1024
       Environment:
         Variables:
           OPENAI_API_KEY: "{{resolve:secretsmanager:prod/speakyer/secrets:SecretString:OPENAI_API_KEY::}}"
           OUTPUT_S3_BUCKET: !Ref ProcessedDataS3Bucket
+      Layers:
+        - !Ref PydubLayer
       Policies:
         - Statement:
             Effect: Allow
@@ -90,8 +101,15 @@ Resources:
             Resource: !Sub "arn:aws:s3:::${RawDataS3Bucket}/*"
         - Statement:
             Effect: Allow
-            Action: s3:PutObject
+            Action:
+              - s3:PutObject
+              - s3:GetObject
             Resource: !Sub "arn:aws:s3:::${ProcessedDataS3Bucket}/*"
+        - Statement:
+            Effect: Allow
+            Action:
+              - s3:ListBucket
+            Resource: !Sub "arn:aws:s3:::${ProcessedDataS3Bucket}"
 
   # SES Rule Set
   SESReceiptRuleSet:
