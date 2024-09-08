@@ -29,6 +29,16 @@ Resources:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
+  ProcessedDataS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-processed-data'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
   # SNS Topic for incoming emails
   EmailSNSTopic:
     Type: AWS::SNS::Topic
@@ -51,6 +61,11 @@ Resources:
             Effect: Allow
             Action: s3:PutObject
             Resource: !Sub "arn:aws:s3:::${RawDataS3Bucket}/*"
+        - Statement:
+            Effect: Allow
+            Action: lambda:InvokeFunction
+            Resource: !GetAtt RawDataToAudioLambda.Arn
+
       Events:
         SNSSubscription:
           Type: SNS
@@ -63,20 +78,20 @@ Resources:
     Properties:
       CodeUri: functions/
       Handler: raw_data_to_audio.lambda_handler
+      Timeout: 60
+      Environment:
+        Variables:
+          OPENAI_API_KEY: "{{resolve:secretsmanager:prod/speakyer/secrets:SecretString:OPENAI_API_KEY::}}"
+          OUTPUT_S3_BUCKET: !Ref ProcessedDataS3Bucket
       Policies:
         - Statement:
             Effect: Allow
             Action: s3:GetObject
             Resource: !Sub "arn:aws:s3:::${RawDataS3Bucket}/*"
-
-  # Permission for EmailFilterLambda to invoke RawDataToAudioLambda
-  EmailFilterToRawDataAudioLambdaPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt RawDataToAudioLambda.Arn
-      Action: lambda:InvokeFunction
-      Principal: lambda.amazonaws.com
-      SourceArn: !GetAtt EmailFilterLambda.Arn
+        - Statement:
+            Effect: Allow
+            Action: s3:PutObject
+            Resource: !Sub "arn:aws:s3:::${ProcessedDataS3Bucket}/*"
 
   # SES Rule Set
   SESReceiptRuleSet:

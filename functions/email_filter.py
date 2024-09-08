@@ -23,12 +23,15 @@ def invoke_next_lambda(payload: Dict[str, Any]) -> None:
     function_name = os.environ["NEXT_LAMBDA"]
     logger.info(f"Invoking {function_name} with payload: {payload}")
     # invoke the next lambda synchronously
-    # response = lambda_client.invoke(
-    #     FunctionName=function_name,
-    #     InvocationType="RequestResponse",
-    #     Payload=json.dumps(payload),
-    # )
-    logger.info(f"Response from {function_name}: {hi}")
+    try:
+        lambda_client.invoke(
+            FunctionName=function_name,
+            InvocationType="Event",
+            Payload=json.dumps(payload),
+        )
+    except Exception as e:
+        logger.error(f"Error invoking {function_name}: {e}")
+        raise e
 
 
 def lambda_handler(event, _):
