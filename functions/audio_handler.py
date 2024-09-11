@@ -48,6 +48,12 @@ def handle_audio(input_key: str, text: str, output_bucket: str) -> str:
     Convert the extracted text to audio and store it in S3
     If the audio file already exists, don't do anything
 
+    Parameters:
+        input_key (str): The key of the raw data input file
+        text (str): The extracted text to convert to audio
+        output_bucket (str): The S3 bucket to store the audio
+    Returns:
+        str: The key of the audio file
     """
     audio_key = new_key_for_processed_file(input_key, "audios", "mp3")
     audio_file_exists = file_exists(output_bucket, audio_key)

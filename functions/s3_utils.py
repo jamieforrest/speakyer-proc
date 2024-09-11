@@ -24,12 +24,12 @@ def file_exists(bucket: str, key: str) -> bool:
         return True
 
 
-def write_extracted_text_to_s3(bucket: str, key: str, extracted_text: str) -> None:
+def write_text_to_s3(bucket: str, key: str, text: str) -> None:
     """Write the extracted text to S3."""
     s3.put_object(
         Bucket=bucket,
         Key=key,
-        Body=extracted_text,
+        Body=text,
     )
 
 

@@ -5,7 +5,7 @@ from s3_utils import (
     file_exists,
     get_file_content_from_s3,
     new_key_for_processed_file,
-    write_extracted_text_to_s3,
+    write_text_to_s3,
 )
 from typing import Tuple
 
@@ -38,6 +38,6 @@ def handle_text(
         extracted_text = get_file_content_from_s3(output_bucket, text_key)
 
     if not text_file_exists and extracted_text:
-        write_extracted_text_to_s3(output_bucket, text_key, extracted_text)
+        write_text_to_s3(output_bucket, text_key, extracted_text)
 
     return extracted_text, text_key
